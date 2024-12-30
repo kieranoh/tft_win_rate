@@ -172,7 +172,7 @@ def to_korea_time(epoch_ms):
     return dt.strftime("%Y-%m-%d %H:%M:%S"), dt.strftime("%A")
 
 def main():
-    nametage = {"name":"tag"}
+    nametage = {"name_1":"tag_1"}
 
     for name, tag in nametage.items():
         os.makedirs(f"./data/{name}_output_folder", exist_ok=True)
