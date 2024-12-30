@@ -178,7 +178,7 @@ def main():
         os.makedirs(f"./data/{name}_output_folder", exist_ok=True)
         data = load_match_data(f"./data/{name}_match_info.json")
 
-        target_set_numbers = [10, 11, 12, 13]    
+        target_set_numbers = [ 11, 12, 13]    
 
         for set_number in target_set_numbers:
 
