@@ -172,6 +172,7 @@ def to_korea_time(epoch_ms):
     return dt.strftime("%Y-%m-%d %H:%M:%S"), dt.strftime("%A")
 
 def main():
+    #code for get indivudal data
     nametage = {"name":"tag"}
 
     for name, tag in nametage.items():

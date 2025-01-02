@@ -53,16 +53,24 @@ def process_units(units_data):
             total_items += num_items
     return total_tier, total_items
 
+def process_win(units_data):
+    if units_data >=4:
+        return  1
+    else:
+        return 0
+
 # Apply processing to the data
 data['Total Traits Level'] = data['Traits'].apply(process_traits)
+data['result'] = data['placement'].apply(process_win)
+
 data[['Total Unit Tier', 'Total Unit Items']] = data['Units'].apply(
     lambda x: pd.Series(process_units(x))
 )
 
 # Add additional features
-additional_features = ['Total Traits Level', 'Total Unit Tier', 'Total Unit Items', '\ub808\ubca8']
+additional_features = ['Total Traits Level', 'Total Unit Tier', 'Total Unit Items', 'level']
 X = data[additional_features]
-y = data['\uc21c\uc704']
+y = data['result']
 
 # Step 3: Train-Test Split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -74,15 +82,15 @@ X_test = scaler.transform(X_test)
 
 # Step 5: Build the neural network model
 model = Sequential([
-    Dense(128, activation='relu', input_shape=(X_train.shape[1],)),  # 첫 번째 히든 레이어
-    Dense(64, activation='relu'),  # 두 번째 히든 레이어
-    Dense(32, activation='relu'),  # 세 번째 히든 레이어
-    Dense(1, activation='linear')  # 출력 레이어
+    Dense(128, activation='relu', input_shape=(X_train.shape[1],)),  # fisrt hidden layer
+    Dense(64, activation='relu'),  # second hidden layer
+    Dense(32, activation='relu'),  # third hidden layer
+    Dense(1, activation='sigmoid')  # output layer
 ])
 
-model.compile(optimizer=Adam(learning_rate=0.05), loss='mse', metrics=['mae'])
+model.compile(optimizer=Adam(learning_rate=0.05), loss='binary_crossentropy', metrics=['mae'])
 
-# EarlyStopping 콜백 설정
+# EarlyStopping 
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
 # Step 6: Train the model
@@ -117,15 +125,6 @@ if X_train_df.isnull().sum().sum() > 0 or X_test_df.isnull().sum().sum() > 0:
 background = X_train[:100]  # SHAP background samples (reduces computation time)
 explainer = shap.DeepExplainer(model, background)
 shap_values = explainer.shap_values(X_test[:100])  # Use a subset of test data for efficiency
-
-# Step 9: Summary plot
-plt.figure()
-shap.summary_plot(shap_values, X_test_df[:100], plot_type="bar")
-plt.title("SHAP Feature Importance (Bar Plot)")
-
-plt.figure()
-shap.summary_plot(shap_values, X_test_df[:100])
-plt.title("SHAP Feature Importance (Summary Plot)")
 
 
 # Step 10: Save predictions
