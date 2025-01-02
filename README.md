@@ -8,3 +8,5 @@ Use the Riot API to get the game data. This data contains the game ID, generatio
 ## machine learning algorithm
 
 - Neural network(deep learning) : Mean squared Error : 0.126, Accuracy : 0.804, F1 Score : 0.7993
+
+- SVM : Mean squared Error : 0.111, Accuracy : 0.840, F1 Score : 0.838 ( Using Grid Search to find best parameter)
