@@ -1,19 +1,14 @@
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_error, accuracy_score, f1_score
 import shap
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping
-from matplotlib import font_manager, rc
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib import font_manager, rc
 
 # korean font
-font_path = "C:/Windows/Fonts/malgun.ttf" 
+font_path = "C:/Windows/Fonts/malgun.ttf"  # Windows: Malgun Gothic
 font_name = font_manager.FontProperties(fname=font_path).get_name()
 rc('font', family=font_name)
 plt.rcParams['axes.unicode_minus'] = False
@@ -67,72 +62,61 @@ data[['Total Unit Tier', 'Total Unit Items']] = data['Units'].apply(
 )
 
 # Add additional features
-additional_features = ['Total Traits Level', 'Total Unit Tier', 'Total Unit Items', 'level']
+additional_features = ['Total Traits Level', 'Total Unit Tier', 'Total Unit Items',  'level']
 X = data[additional_features]
 y = data['result']
 
 # Step 3: Train-Test Split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Step 4: Scale the features
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+# # Step 4: Train the model
+# param_grid = {
+#     'C': [0.1, 1, 10, 100],
+#     'gamma': [0.001, 0.01, 0.1, 1],
+#     'kernel': ['rbf', 'poly', 'sigmoid']
+# }
 
-# Step 5: Build the neural network model
-model = Sequential([
-    Dense(128, activation='relu', input_shape=(X_train.shape[1],)),  # fisrt hidden layer
-    Dense(64, activation='relu'),  # second hidden layer
-    Dense(32, activation='relu'),  # third hidden layer
-    Dense(1, activation='sigmoid')  # output layer
-])
+# grid_search = GridSearchCV(SVR(), param_grid, cv=5, scoring='neg_mean_squared_error', verbose=2, n_jobs=-1)
+# grid_search.fit(X_train, y_train)
 
-model.compile(optimizer=Adam(learning_rate=0.05), loss='binary_crossentropy', metrics=['mae'])
+# # Best hyperparameters
+# best_params = grid_search.best_params_
+# print(f"Best Parameters: {best_params}")
 
-# EarlyStopping 
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+# # Train the model with best parameters
+# model = grid_search.best_estimator_
 
-# Step 6: Train the model
-history = model.fit(X_train, y_train, validation_split=0.2, epochs=8000, batch_size=32, 
-                    verbose=1, callbacks=[early_stopping])
+model = SVR(C=1,gamma=0.01, kernel = 'rbf')
+model.fit(X_train, y_train)
 
-# Step 7: Evaluate the model
-y_pred = model.predict(X_test).flatten()
+# Step 5: Evaluate the model
+y_pred = model.predict(X_test)
 y_pred_rounded = np.round(y_pred)
 
+# Calculate metrics
 mse = mean_squared_error(y_test, y_pred)
-print(f"Mean Squared Error: {mse}")
-
-# Calculate accuracy and F1 score for rounded predictions
 accuracy = accuracy_score(y_test, y_pred_rounded)
 f1 = f1_score(y_test, y_pred_rounded, average='weighted')
+
+print(f"Mean Squared Error: {mse}")
 print(f"Accuracy: {accuracy}")
 print(f"F1 Score: {f1}")
 
+# Step 6: SHAP analysis
+explainer = shap.KernelExplainer(model.predict, X_train)
+shap_values = explainer.shap_values(X_test, nsamples=100)
 
-# Check for missing values and fill them
-X_train_df = pd.DataFrame(X_train, columns=additional_features)
-X_test_df = pd.DataFrame(X_test, columns=additional_features)
+# Step 7: Summary plot
+shap.summary_plot(shap_values, X_test, plot_type="bar")
+shap.summary_plot(shap_values, X_test)
 
-if X_train_df.isnull().sum().sum() > 0 or X_test_df.isnull().sum().sum() > 0:
-    print("Warning: Missing values found. Filling with 0.")
-    X_train_df = X_train_df.fillna(0)
-    X_test_df = X_test_df.fillna(0)
-
-# Step 8: SHAP analysis with DeepExplainer
-
-background = X_train[:100]  # SHAP background samples (reduces computation time)
-explainer = shap.DeepExplainer(model, background)
-shap_values = explainer.shap_values(X_test[:100])  # Use a subset of test data for efficiency
-
-
-# Step 10: Save predictions
+# Step 8: Save predictions
 test_results = pd.concat([
-    pd.DataFrame(X_test, columns=additional_features),
+    X_test.reset_index(drop=True),
     y_test.reset_index(drop=True),
     pd.Series(y_pred, name="Predicted Rank")
 ], axis=1)
 
-output_path = 'predicted_test_data_with_shap_nn.xlsx'
+output_path = 'predicted_test_data_with_shap_svm.xlsx'
 test_results.to_excel(output_path, index=False)
 print(f"Predictions and SHAP analysis saved to {output_path}")
